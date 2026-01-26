@@ -1,34 +1,131 @@
-import google.
+// Copyright 2023 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" B1IS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+syntax = "proto3";
 
+package openconfig.pcrservice;
+
+import "github.com/openconfig/attestz/proto/common_definitions.proto";
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/openconfig/pcrservice";
+
+
+// Enumerations
+enum HashAlgo {
+  HASH_ALGO_UNSPECIFIED = 0;
+  HASH_ALGO_SHA1 = 1;
+  HASH_ALGO_SHA256 = 2;
+  HASH_ALGO_SHA384 = 3;
+  HASH_ALGO_SHA512 = 4;
+}
+
+enum RootOfTrustMeasurement {
+   UNSPECIFIED = 0;
+   TPM_1.2_PCR = 1;
+   TPM_2.0_PCR = 2;
+}
+
+enum BootStage {
+SRTM = 0;
+BIOS = 1;
+BIOS_CONFIGURATION = 2;
+EMBEDDED_OPTION_ROMS = 3;
+PLATFORM_EXTENSIONS = 4;
+PLATFORM_INITIALIZATION_DRIVERS = 5;
+PLATFORM_CONFIGURATIONS = 6;
+UEFI_APPLICATIONS = 7;
+UEFI_APPLICATION_CONFIGURATION = 8;
+PARTITION_TABLE = 9;
+BOOT_MANAGER = 10;
+BOOT_CONFIGURATION = 11; // Includes critical boot security configuration such as secure boot.
+BOOT_LOADER = 12;
+KERNEL_CONFIGURATION = 13;
+KERNEL_COMMAND_LINE = 14;
+KERNEL = 15;
+OS_CONFIGURATION = 16;
+ROOT_FILESYSTEM = 17;
+OS_EXTENSION = 18;
+CONTAINER_IMAGES = 19;
+OTHER = 20;
+}
 message PcrValues { 
    int32 pcr_index = 1; // Refers to the PCR index value
-   string pcr_name = 2; // Refers to a quick reference name to define PCR measurement content associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
-   bytes pcr_value = 3; // Refers to set of PCR raw bytes
+   repeated BootStage boot_stage = 2; // Refers to a quick reference name to define PCR measurement content associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
+   bytes pcr_values = 3; // Refers to set of PCR raw bytes
 }
 
-message DevicePcrCollection { 
-   string software_version = 1; // Refers to the software version of the current ISO image
-   TpmVersion tpm_version = 2; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
-   string hardware_model = 3; // Refers to hardware model for the collected PCR
-   google.protobuf.Timestamp timestamp = 4; // Time of PCR Artifact Collection
-   Tpm20HashAlgo hash_algorithm = 5; // Hash algorithm of the selected PCR bank. 
-   map<int32, PcrValues> pcr_values = 6; // 
+// Get RPC Messages
+message GetRequest { 
+   string image_version = 1; // Refers to the the version of the software/firmware
+   string hardware_model = 2; // Refers to hardware model for the collected PCR
+   string HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
+   }
+
+message GetResponse { 
+   string image_version = 1; // Refers to the the version of the software/firmware
+   string hardware_model = 2; // Refers to hardware model for the collected PCR
+   string HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
+   RootOfTrustMeasurement measurement = 1; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
+   google.protobuf.Timestamp timestamp = 2; // Time of PCR Artifact Collection
+   map<int32, PcrValues> pcr_values = 4; // 
 }
 
-enum Tpm20HashAlgo {
-  TPM20HASH_ALGO_UNSPECIFIED = 0;
-  TPM20HASH_ALGO_SHA1 = 1;
-  TPM20HASH_ALGO_SHA256 = 2;
-  TPM20HASH_ALGO_SHA384 = 3;
-  TPM20HASH_ALGO_SHA512 = 4;
+// Fetch RPC Messages
+
+// Request for fetching all known hardware models.
+message FetchHardwareModelsRequest {}
+
+// Response containing a list of known hardware model strings.
+message FetchHardwareModelsResponse {
+    repeated string hardware_models = 1; // List of valid hardware model strings (e.g., "A9K-400-LC", "Nokia-7750")
 }
 
-enum TpmVersion {
-   TPM_VERSION_UNSPECIFIED = 0;
-   TPM_VERSION_1.2 = 1;
-   TPM_VERSION_2.0 = 2;
+// Request for fetching all known bootloader versions for a specific hardware model.
+message FetchBootLoaderVersionsRequest {
+    string hardware_model = 1; // The hardware model to fetch bootloader versions for.
 }
 
-service PCRService {
+// Response containing a list of known bootloader version strings.
+message FetchBootLoaderVersionsResponse {
+    repeated string bootloader_versions = 1; // List of valid bootloader version strings for the specified hardware model.
+}
 
-   rpc Get(GetRequest) returns (GetResponse);
+// Request for fetching all known software versions for a specific hardware model.
+message FetchSoftwareVersionsRequest {
+    string hardware_model = 1; // The hardware model to fetch software versions for.
+}
+
+// Response containing a list of known software version strings.
+message FetchSoftwareVersionsResponse {
+    repeated string software_versions = 1; // List of valid software version strings (e.g., "7.5.1", "XR-7.1.2") for the specified hardware model.
+}
+
+
+// Service Definition with RPCs
+service SecurityService {
+
+   // Retrieves the PCR values for a specific software/hardware/bootloader combination.
+   rpc GetPCR(GetRequest) returns (GetResponse);
+
+   // Fetches a list of all known hardware model strings supported by the vendor service.
+   rpc FetchHardwareModels(FetchHardwareModelsRequest) returns (FetchHardwareModelsResponse);
+
+   // Fetches a list of known bootloader version strings for a given hardware model.
+   rpc FetchBootLoaderVersions(FetchBootLoaderVersionsRequest) returns (FetchBootLoaderVersionsResponse);
+
+   // Fetches a list of known software version strings for a given hardware model.
+   rpc FetchSoftwareVersions(FetchSoftwareVersionsRequest) returns (FetchSoftwareVersionsResponse);
+}
