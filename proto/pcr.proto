@@ -1,0 +1,34 @@
+import google.
+
+message PcrValues { 
+   int32 pcr_index = 1; // Refers to the PCR index value
+   string pcr_name = 2; // Refers to a quick reference name to define PCR measurement content associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
+   bytes pcr_value = 3; // Refers to set of PCR raw bytes
+}
+
+message DevicePcrCollection { 
+   string software_version = 1; // Refers to the software version of the current ISO image
+   TpmVersion tpm_version = 2; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
+   string hardware_model = 3; // Refers to hardware model for the collected PCR
+   google.protobuf.Timestamp timestamp = 4; // Time of PCR Artifact Collection
+   Tpm20HashAlgo hash_algorithm = 5; // Hash algorithm of the selected PCR bank. 
+   map<int32, PcrValues> pcr_values = 6; // 
+}
+
+enum Tpm20HashAlgo {
+  TPM20HASH_ALGO_UNSPECIFIED = 0;
+  TPM20HASH_ALGO_SHA1 = 1;
+  TPM20HASH_ALGO_SHA256 = 2;
+  TPM20HASH_ALGO_SHA384 = 3;
+  TPM20HASH_ALGO_SHA512 = 4;
+}
+
+enum TpmVersion {
+   TPM_VERSION_UNSPECIFIED = 0;
+   TPM_VERSION_1.2 = 1;
+   TPM_VERSION_2.0 = 2;
+}
+
+service PCRService {
+
+   rpc Get(GetRequest) returns (GetResponse);
