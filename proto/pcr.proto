@@ -32,7 +32,7 @@ enum HashAlgo {
   HASH_ALGO_SHA512 = 4;
 }
 
-enum RootOfTrustMeasurement {
+enum RootOfTrustForMeasurement {
    UNSPECIFIED = 0;
    TPM_1.2_PCR = 1;
    TPM_2.0_PCR = 2;
@@ -77,8 +77,8 @@ message GetRequest {
 message GetResponse { 
    string image_version = 1; // Refers to the the version of the software/firmware
    string hardware_model = 2; // Refers to hardware model for the collected PCR
-   string HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
-   RootOfTrustMeasurement measurement = 1; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
+   HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
+   RootOfTrustMeasurement root_of_trust = 1; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
    google.protobuf.Timestamp timestamp = 2; // Time of PCR Artifact Collection
    map<int32, PcrValues> pcr_values = 4; // 
 }
