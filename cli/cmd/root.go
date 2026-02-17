@@ -27,6 +27,10 @@ import (
 	cdx "github.com/CycloneDX/cyclonedx-go"
 )
 
+var (
+	formatList = []string{"cyclonedx-v16-prototxt", "cyclonedx-v16-proto", "cyclonedx-v16-json", "spdx-v23-json"}
+)
+
 func New() *cobra.Command {
 	root := &cobra.Command{
 		Use:          "sbom",
@@ -71,6 +75,18 @@ func showSBOM(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	switch format {
+	case "cyclonedx-v16-prototxt":
+		sbom, err := loadCycloneDXProtoTxt(sbomFileName)
+		if err != nil {
+			return err
+		}
+		b, err := printCycloneDX(sbom)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintln(cmd.OutOrStderr(), "SBOM:")
+		fmt.Fprintln(cmd.OutOrStdout(), string(b))
+		return nil
 	case "cyclonedx-v16-proto":
 		return fmt.Errorf("unimplemented format: cyclonedx-v16-proto")
 	case "cyclonedx-v16-json":
@@ -89,7 +105,11 @@ func showSBOM(cmd *cobra.Command, args []string) error {
 	case "spdx-v23-json":
 		return fmt.Errorf("unimplemented format: spdx-v23-json")
 	}
-	return fmt.Errorf("Invalid format: %q", format)
+	return fmt.Errorf("Invalid format: %q supported formats: %v", format, formatList)
+}
+
+func loadCycloneDXProtoTxt(filename string) (*cdx.BOM, error) {
+	return nil, fmt.Errorf("unimplemented")
 }
 
 func loadCycloneDXJSON(filename string) (*cdx.BOM, error) {
@@ -158,7 +178,21 @@ func convertSBOM(cmd *cobra.Command, args []string) error {
 		fmt.Fprintf(cmd.OutOrStdout(), "Wrote output to %q\n", spdxFileName)
 		return nil
 	case "spdx-v23-json":
-		return fmt.Errorf("unimplemented format: spdx-v23-json")
+		fmt.Fprintf(cmd.OutOrStdout(), "Input file is already SPDX only validating.\n")
+		checker, err := base.NewChecker(base.WithEOChecker(), base.WithSPDXChecker())
+		if err != nil {
+			return err
+		}
+		b, err := os.ReadFile(sbomFileName)
+		if err != nil {
+			return err
+		}
+		checker.SetSBOM(bytes.NewBuffer(b))
+		checker.RunChecks()
+		results := checker.Results()
+		fmt.Fprintf(cmd.OutOrStdout(), "Conformance Results:\n")
+		fmt.Fprintln(cmd.OutOrStdout(), results.TextSummary)
+		return nil
 	}
-	return fmt.Errorf("Invalid format: %q", format)
+	return fmt.Errorf("Invalid format: %q supported formats: %v", format, formatList)
 }
