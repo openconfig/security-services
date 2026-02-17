@@ -31,17 +31,14 @@ func TestAddCycloneDXComponents(t *testing.T) {
 			t.Errorf("AddCycloneDXComponents() error = %v, want nil", err)
 		}
 
-		// Check refMap
 		if _, ok := refMap["test-ref"]; !ok {
 			t.Error("Component not added to refMap")
 		}
 
-		// Check typeMap
 		if typeMap["library"] != 1 {
 			t.Errorf("typeMap[library] = %d, want 1", typeMap["library"])
 		}
 
-		// Check SPDX package created
 		if len(spdxDoc.Packages) != 1 {
 			t.Errorf("Expected 1 package, got %d", len(spdxDoc.Packages))
 		}
@@ -86,12 +83,10 @@ func TestAddCycloneDXComponents(t *testing.T) {
 			t.Errorf("AddCycloneDXComponents() error = %v, want nil", err)
 		}
 
-		// Should still be added to maps
 		if _, ok := refMap["file-ref"]; !ok {
 			t.Error("Component not added to refMap")
 		}
 
-		// Should not create SPDX package
 		if len(spdxDoc.Packages) != 0 {
 			t.Errorf("Expected 0 packages for file component, got %d", len(spdxDoc.Packages))
 		}
@@ -118,7 +113,6 @@ func TestAddCycloneDXComponents(t *testing.T) {
 			t.Errorf("AddCycloneDXComponents() error = %v, want nil", err)
 		}
 
-		// Check external references
 		if len(spdxDoc.Packages) != 1 {
 			t.Fatalf("Expected 1 package, got %d", len(spdxDoc.Packages))
 		}
@@ -155,7 +149,6 @@ func TestAddCycloneDXComponents(t *testing.T) {
 			t.Fatalf("Expected 1 package, got %d", len(spdxDoc.Packages))
 		}
 
-		// Check package supplier information.
 		pkg := spdxDoc.Packages[0]
 		if pkg.PackageSupplier == nil {
 			t.Fatalf("Package supplier must be set")
@@ -197,7 +190,6 @@ func TestAddCycloneDXComponents(t *testing.T) {
 			t.Errorf("AddCycloneDXComponents() error = %v, want nil", err)
 		}
 
-		// Check package download location.
 		pkg := spdxDoc.Packages[0]
 		if pkg.PackageDownloadLocation != pkgDownloadLocation {
 			t.Fatalf("Expected package download location to be %s, got %s",
@@ -229,7 +221,6 @@ func TestAddCycloneDXComponents(t *testing.T) {
 			t.Errorf("AddCycloneDXComponents() error = %v, want nil", err)
 		}
 
-		// Check contain relationship.
 		if len(spdxDoc.Packages) != 2 {
 			t.Fatalf("Expected 2 packages, got %d", len(spdxDoc.Packages))
 		}
@@ -331,4 +322,58 @@ func TestAddCycloneDXDependencies(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestIsComponentSPDXPackageAndHelpers(t *testing.T) {
+	if !IsComponentSPDXPackage(cdx.Component{Type: cdx.ComponentTypeLibrary}) {
+		t.Fatalf("Expected library to be considered an SPDX package")
+	}
+	if IsComponentSPDXPackage(cdx.Component{Type: cdx.ComponentTypeFile}) {
+		t.Fatalf("Expected file NOT to be considered an SPDX package")
+	}
+
+	el := toSPDXElementID("abc")
+	if !strings.HasPrefix(string(el), "SPDXRef-") {
+		t.Fatalf("toSPDXElementID did not produce expected prefix, got %q", el)
+	}
+	docEl := toSPDXDocElementID("abc")
+	if docEl.ElementRefID != el {
+		t.Fatalf("toSPDXDocElementID did not wrap element ID correctly: %v vs %v", docEl, el)
+	}
+}
+
+func TestSPDXToJSONAndConvertToGoogleSPDX(t *testing.T) {
+	doc := &spdx.Document{DocumentName: "mydoc", SPDXVersion: spdx.Version}
+	b, err := SPDXToJSON(doc)
+	assert.NoError(t, err)
+	assert.Contains(t, string(b), "mydoc")
+
+	bom := &cdx.BOM{
+		SerialNumber: "urn:uuid:1234",
+		Metadata: &cdx.Metadata{
+			Timestamp: "2020-01-01T00:00:00Z",
+			Component: &cdx.Component{
+				Name:     "metaName",
+				Supplier: &cdx.OrganizationalEntity{Name: "supName"},
+			},
+		},
+		Components: &[]cdx.Component{
+			{
+				BOMRef:     "comp1",
+				Type:       cdx.ComponentTypeLibrary,
+				Name:       "compname",
+				PackageURL: "pkg:golang/comp@v1",
+			},
+		},
+	}
+
+	spdxDoc, err := ConvertToGoogleSPDX(bom)
+	assert.NoError(t, err)
+	assert.Equal(t, "metaName", spdxDoc.DocumentName)
+	if spdxDoc.CreationInfo == nil {
+		t.Fatalf("CreationInfo must not be nil")
+	}
+	assert.Equal(t, "2020-01-01T00:00:00Z", spdxDoc.CreationInfo.Created)
+	assert.NotEmpty(t, spdxDoc.DocumentNamespace)
+	assert.Len(t, spdxDoc.Packages, 1)
 }
