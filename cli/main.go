@@ -7,7 +7,7 @@ import (
 
 	"github.com/openconfig/security-services/cli/cmd"
 	"github.com/spf13/pflag"
-	"k8s.io/klog"
+	log "k8s.io/klog/v2"
 )
 
 var (
@@ -20,7 +20,7 @@ var (
 
 func main() {
 	// Import flags into pflags that are set in other flag packages.
-	klog.InitFlags(nil)
+	log.InitFlags(nil)
 	for k, v := range flagset {
 		if f := flag.Lookup(k); f != nil {
 			f.Value.Set(v)
