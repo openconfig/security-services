@@ -9,7 +9,7 @@ import (
 	"github.com/spdx/tools-golang/spdx"
 	"github.com/spdx/tools-golang/spdx/v2/common"
 	"github.com/spdx/tools-golang/spdx/v2/v2_3"
-	log "k8s.io/klog"
+	log "k8s.io/klog/v2"
 )
 
 func ConvertToGoogleSPDX(bom *cdx.BOM) (*spdx.Document, error) {
