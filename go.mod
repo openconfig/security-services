@@ -11,6 +11,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	google.golang.org/protobuf v1.36.11
 	k8s.io/klog v1.0.0
+	k8s.io/klog/v2 v2.130.1
 )
 
 require (
