@@ -20,6 +20,8 @@ import "github.com/openconfig/attestz/proto/common_definitions.proto";
 
 import "google/protobuf/timestamp.proto";
 
+import "google/type/date.proto";
+
 option go_package = "github.com/openconfig/pcrservice";
 
 
@@ -32,7 +34,7 @@ enum HashAlgo {
   HASH_ALGO_SHA512 = 4;
 }
 
-enum RootOfTrustForMeasurement {
+enum RootOfTrustVersion {
    UNSPECIFIED = 0;
    TPM_1.2_PCR = 1;
    TPM_2.0_PCR = 2;
@@ -64,23 +66,27 @@ OTHER = 20;
 message PcrValues { 
    int32 pcr_index = 1; // Refers to the PCR index value
    repeated BootStage boot_stage = 2; // Refers to a quick reference name to define PCR measurement content associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
-   bytes pcr_values = 3; // Refers to set of PCR raw bytes
+   repeated bytes pcr_values = 3; // Refers to set of PCR raw bytes
+}
+
+message MeasurementIdentifier {
+    string image_version = 1; // Refers to the the version of the software/firmware
+    string bootloader_version = 2; // Refers to aboot version or bootloader versions for vendors
+    string hardware_model = 3; // Refers to hardware model for the collected PCR
+    HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
 }
 
 // Get RPC Messages
 message GetRequest { 
-   string image_version = 1; // Refers to the the version of the software/firmware
-   string hardware_model = 2; // Refers to hardware model for the collected PCR
-   string HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
+   MeasurementIdentifier identifier = 1;
    }
 
 message GetResponse { 
-   string image_version = 1; // Refers to the the version of the software/firmware
-   string hardware_model = 2; // Refers to hardware model for the collected PCR
-   HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
-   RootOfTrustMeasurement root_of_trust = 1; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
-   google.protobuf.Timestamp timestamp = 2; // Time of PCR Artifact Collection
-   map<int32, PcrValues> pcr_values = 4; // 
+   MeasurementIdentifier identifier = 1;
+   RootOfTrustVersion root_of_trust = 2; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
+   google.protobuf.Timestamp timestamp = 3; // Time of PCR Artifact Collection
+   google.type.Date calendar_date = 4; // Date of PCR Artifact Collection
+   map<int32, PcrValues> pcr_values = 5; // 
 }
 
 // Fetch RPC Messages
