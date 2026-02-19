@@ -35,7 +35,7 @@ enum HashAlgo {
 }
 
 enum RootOfTrustVersion {
-   UNSPECIFIED = 0;
+   ROOT_OF_TRUST_VERSION_UNSPECIFIED = 0;
    TPM_1.2_PCR = 1;
    TPM_2.0_PCR = 2;
 }
@@ -64,16 +64,29 @@ CONTAINER_IMAGES = 19;
 OTHER = 20;
 }
 message PcrValues { 
-   int32 pcr_index = 1; // Refers to the PCR index value
-   repeated BootStage boot_stage = 2; // Refers to a quick reference name to define PCR measurement content associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
-   repeated bytes pcr_values = 3; // Refers to set of PCR raw bytes
+   // Refers to the PCR index value
+   int32 pcr_index = 1; 
+
+   // Refers to a quick reference name to define PCR measurement content 
+   // associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
+   repeated BootStage boot_stage = 2; 
+
+   // Refers to the set of multiple PCR raw byte hashes for this index.
+   repeated bytes hashes = 3; 
 }
 
 message MeasurementIdentifier {
-    string image_version = 1; // Refers to the the version of the software/firmware
-    string bootloader_version = 2; // Refers to aboot version or bootloader versions for vendors
-    string hardware_model = 3; // Refers to hardware model for the collected PCR
-    HashAlgo hash_algorithm = 4; // Hash algorithm of the selected PCR bank.
+    // Refers to the the version of the software/firmware
+    string image_version = 1; 
+
+    // Refers to aboot version or bootloader versions for vendors
+    string bootloader_version = 2; 
+
+    // Refers to hardware model for the collected PCR
+    string hardware_model = 3; 
+
+    // Hash algorithm of the selected PCR bank
+    HashAlgo hash_algorithm = 4; 
 }
 
 // Get RPC Messages
@@ -83,10 +96,17 @@ message GetRequest {
 
 message GetResponse { 
    MeasurementIdentifier identifier = 1;
-   RootOfTrustVersion root_of_trust = 2; // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
-   google.protobuf.Timestamp timestamp = 3; // Time of PCR Artifact Collection
-   google.type.Date calendar_date = 4; // Date of PCR Artifact Collection
-   map<int32, PcrValues> pcr_values = 5; // 
+
+   // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
+   RootOfTrustVersion root_of_trust = 2; 
+ 
+   // Time of PCR Artifact Collection
+   google.protobuf.Timestamp timestamp = 3;
+
+   // Date of PCR Artifact Collection
+   google.type.Date calendar_date = 4;
+
+   map<int32, PcrValues> pcr_values = 5; 
 }
 
 // Fetch RPC Messages
@@ -96,27 +116,34 @@ message FetchHardwareModelsRequest {}
 
 // Response containing a list of known hardware model strings.
 message FetchHardwareModelsResponse {
-    repeated string hardware_models = 1; // List of valid hardware model strings (e.g., "A9K-400-LC", "Nokia-7750")
+    // List of valid hardware model strings (e.g., "A9K-400-LC", "Nokia-7750")
+    repeated string hardware_models = 1;
 }
 
 // Request for fetching all known bootloader versions for a specific hardware model.
 message FetchBootLoaderVersionsRequest {
-    string hardware_model = 1; // The hardware model to fetch bootloader versions for.
+    // The hardware model to fetch bootloader versions
+    string hardware_model = 1; 
 }
 
 // Response containing a list of known bootloader version strings.
 message FetchBootLoaderVersionsResponse {
-    repeated string bootloader_versions = 1; // List of valid bootloader version strings for the specified hardware model.
+    // List of valid bootloader version strings for the specified hardware model
+    repeated string bootloader_versions = 1; 
 }
 
 // Request for fetching all known software versions for a specific hardware model.
 message FetchSoftwareVersionsRequest {
-    string hardware_model = 1; // The hardware model to fetch software versions for.
+    // The hardware model to fetch software versions
+    string hardware_model = 1; 
 }
 
 // Response containing a list of known software version strings.
 message FetchSoftwareVersionsResponse {
-    repeated string software_versions = 1; // List of valid software version strings (e.g., "7.5.1", "XR-7.1.2") for the specified hardware model.
+
+    // List of valid software version strings 
+    // (e.g., "7.5.1", "XR-7.1.2") for the specified hardware model
+    repeated string software_versions = 1; 
 }
 
 
