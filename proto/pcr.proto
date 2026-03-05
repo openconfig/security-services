@@ -7,7 +7,7 @@
 //    http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" B1IS,
+// distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
@@ -15,8 +15,6 @@
 syntax = "proto3";
 
 package openconfig.pcrservice;
-
-import "github.com/openconfig/attestz/proto/common_definitions.proto";
 
 import "google/protobuf/timestamp.proto";
 
@@ -36,8 +34,8 @@ enum HashAlgo {
 
 enum RootOfTrustVersion {
    ROOT_OF_TRUST_VERSION_UNSPECIFIED = 0;
-   TPM_1.2_PCR = 1;
-   TPM_2.0_PCR = 2;
+   TPM_1_2_PCR = 1;
+   TPM_2_0_PCR = 2;
 }
 
 enum BootStage {
@@ -90,11 +88,11 @@ message MeasurementIdentifier {
 }
 
 // Get RPC Messages
-message GetRequest { 
+message PCRRequest { 
    MeasurementIdentifier identifier = 1;
    }
 
-message GetResponse { 
+message PCRResponse { 
    MeasurementIdentifier identifier = 1;
 
    // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
@@ -103,10 +101,7 @@ message GetResponse {
    // Time of PCR Artifact Collection
    google.protobuf.Timestamp timestamp = 3;
 
-   // Date of PCR Artifact Collection
-   google.type.Date calendar_date = 4;
-
-   map<int32, PcrValues> pcr_values = 5; 
+   map<int32, PcrValues> pcr_values = 4; 
 }
 
 // Fetch RPC Messages
@@ -151,7 +146,7 @@ message FetchSoftwareVersionsResponse {
 service SecurityService {
 
    // Retrieves the PCR values for a specific software/hardware/bootloader combination.
-   rpc GetPCR(GetRequest) returns (GetResponse);
+   rpc FetchPCR(PCRRequest) returns (PCRResponse);
 
    // Fetches a list of all known hardware model strings supported by the vendor service.
    rpc FetchHardwareModels(FetchHardwareModelsRequest) returns (FetchHardwareModelsResponse);
