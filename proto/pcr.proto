@@ -1,0 +1,221 @@
+// Copyright 2023 Google Inc. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+syntax = "proto3";
+
+package openconfig.pcrservice;
+
+import "google/protobuf/timestamp.proto";
+
+import "google/type/date.proto";
+
+option go_package = "github.com/openconfig/pcrservice";
+
+
+// Enumerations
+enum HashAlgo {
+  // Default value. Indicates that no hash algorithm was specified or it is unknown.
+  HASH_ALGO_UNSPECIFIED = 0;
+  // SHA-1 algorithm (160-bit).
+  HASH_ALGO_SHA1 = 1;
+  // SHA-256 algorithm (256-bit). 
+  HASH_ALGO_SHA256 = 2;
+  // SHA-384 algorithm (384-bit).
+  HASH_ALGO_SHA384 = 3;
+  // SHA-512 algorithm (512-bit).
+  HASH_ALGO_SHA512 = 4;
+}
+
+enum RootOfTrustVersion {
+   // Indicates the TPM version is unknown or not provided.
+   ROOT_OF_TRUST_VERSION_UNSPECIFIED = 0;
+   // Represents TPM 1.2 specifications. supports fixed pcr banks.
+   TPM_1_2_PCR = 1;
+   // Represents TPM 2.0 specifications. Supports multiple PCR banks.
+   TPM_2_0_PCR = 2;
+}
+
+enum BootStage {
+  // PCR 0: SRTM, BIOS, and Host Platform Extensions.
+  // Reference: TCG PC Client Spec - Section 2.3.1
+  SRTM = 0;
+  BIOS = 1;
+  PLATFORM_EXTENSIONS = 4;
+
+  // PCR 1: Host Platform Configuration.
+  // Reference: TCG PC Client Spec - Section 2.3.2
+  BIOS_CONFIGURATION = 2;
+
+  // PCR 2: UEFI Option ROM Code.
+  // Reference: TCG PC Client Spec - Section 2.3.3
+  EMBEDDED_OPTION_ROMS = 3;
+
+  // PCR 3: UEFI Option ROM Configuration and Data.
+  // Reference: TCG PC Client Spec - Section 2.3.4
+  PLATFORM_INITIALIZATION_DRIVERS = 5;
+
+  // PCR 4: UEFI Boot Manager Code and Variables.
+  // Reference: TCG PC Client Spec - Section 2.3.5
+  UEFI_APPLICATIONS = 7;
+  BOOT_MANAGER = 10;
+
+  // PCR 5: UEFI Boot Manager Configuration and Data.
+  // Reference: TCG PC Client Spec - Section 2.3.6
+  PLATFORM_CONFIGURATIONS = 6;
+  UEFI_APPLICATION_CONFIGURATION = 8;
+  PARTITION_TABLE = 9;
+
+  // PCR 7: Secure Boot Policy.
+  // Reference: TCG PC Client Spec - Section 2.3.8
+  BOOT_CONFIGURATION = 11;
+
+  // PCR 8-15: Operating System Defined.
+  // Reference: TCG PC Client Spec - Section 2.3.9
+  BOOT_LOADER = 12;
+  KERNEL_CONFIGURATION = 13;
+  KERNEL_COMMAND_LINE = 14;
+  KERNEL = 15;
+  OS_CONFIGURATION = 16;
+  ROOT_FILESYSTEM = 17;
+  OS_EXTENSION = 18;
+  
+  // Application/Orchestration Layer.
+  // Measurements for containerized environments or runtime integrity.
+  CONTAINER_IMAGES = 19;
+  
+  // Catch-all for proprietary or vendor-specific measurements.
+  OTHER = 20;
+}
+
+message PcrValues { 
+   // Refers to the PCR index value
+   int32 pcr_index = 1; 
+
+   // Refers to a quick reference name to define PCR measurement content 
+   // associated with the pcr index. eg - UEFI Boot Manager Code=pcr_4
+   repeated BootStage boot_stage = 2; 
+
+   // Refers to the set of multiple PCR raw byte hashes for this index.
+   repeated bytes hashes = 3; 
+}
+
+message MeasurementIdentifier {
+    // Note - The canonical version string (e.g., "7.5.1"). 
+    // MUST match the version in the associated vendor's provided SBOM's and be 
+    // extractable from the binary's internal signed metadata.
+    string image_version = 1; 
+
+    // Refers to aboot version or bootloader versions for vendors
+    string bootloader_version = 2; 
+
+    // Refers to hardware model for the collected PCR
+    string hardware_model = 3; 
+
+    // Hash algorithm of the selected PCR bank
+    HashAlgo hash_algorithm = 4; 
+}
+
+// Get RPC Messages
+message PCRRequest { 
+   MeasurementIdentifier identifier = 1;
+   }
+
+message PCRResponse { 
+   MeasurementIdentifier identifier = 1;
+
+   // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
+   RootOfTrustVersion root_of_trust = 2; 
+ 
+   // Time of PCR Artifact Collection
+   google.protobuf.Timestamp timestamp = 3;
+
+   map<int32, PcrValues> pcr_values = 4; 
+}
+
+// Fetch RPC Messages
+
+// Request for fetching all known hardware models.
+message FetchHardwareModelsRequest {}
+
+// Response containing a list of known hardware model strings.
+message FetchHardwareModelsResponse {
+    // List of valid hardware model strings.
+    // Values MUST be prefixed with the manufacturer name to ensure uniqueness.
+    // format: "[manufacturer]:[model]"
+    repeated string hardware_models = 1;
+}
+
+// Request for fetching all known bootloader versions for a specific hardware model.
+message FetchBootLoaderVersionsRequest {
+    // The hardware model to fetch bootloader versions
+    string hardware_model = 1; 
+    // Note - The canonical version string (e.g., "7.5.1"). 
+    // MUST match the version in the associated vendor's provided SBOM's and be 
+    // extractable from the binary's internal signed metadata.
+    string image_version = 2;
+}
+
+// Response containing a list of known bootloader version strings.
+message FetchBootLoaderVersionsResponse {
+    // List of valid bootloader version strings for the specified hardware model
+    repeated string bootloader_versions = 1; 
+}
+
+// Request for fetching all known software versions for a specific hardware model.
+message FetchSoftwareVersionsRequest {
+    // The hardware model to fetch software versions.
+    // Format: "[manufacturer]:[model]"
+    string hardware_model = 1; 
+
+    // Optional: Only return software versions released after this timestamp.
+    // Useful for fetching 'new' or 'relevant' images for a fleet.
+    google.protobuf.Timestamp released_since = 2;
+
+    // Optional: A regex pattern to filter versions (e.g., "^7.5.*").
+    string version_filter_regex = 3;
+}
+// Metadata of the fetch software version response
+message SoftwareVersionMetadata {
+    // The canonical version string (e.g., "7.5.1")
+    string version = 1;
+
+    // The date the software image was officially released/built.
+    google.protobuf.Timestamp release_date = 2;
+    
+    // Optional: Indicates if the version is the current recommended/stable release.
+    bool is_recommended = 3;
+}
+
+// Response for fetching all known software versions for a specific hardware model.
+message FetchSoftwareVersionsResponse {
+    // List of software versions and their associated metadata.
+    repeated SoftwareVersionMetadata software_versions = 1; 
+}
+
+
+// Service Definition with RPCs
+service SecurityService {
+
+   // Retrieves the PCR values for a specific software/hardware/bootloader combination.
+   rpc FetchPCR(PCRRequest) returns (PCRResponse);
+
+   // Fetches a list of all known hardware model strings supported by the vendor service.
+   rpc FetchHardwareModels(FetchHardwareModelsRequest) returns (FetchHardwareModelsResponse);
+
+   // Fetches a list of known bootloader version strings for a given hardware model.
+   rpc FetchBootLoaderVersions(FetchBootLoaderVersionsRequest) returns (FetchBootLoaderVersionsResponse);
+
+   // Fetches a list of known software version strings for a given hardware model.
+   rpc FetchSoftwareVersions(FetchSoftwareVersionsRequest) returns (FetchSoftwareVersionsResponse);
+}
