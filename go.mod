@@ -3,13 +3,13 @@ module github.com/openconfig/security-services
 go 1.24.4
 
 require (
-	github.com/CycloneDX/cyclonedx-go v0.10.0
-	github.com/google/sbom-conformance v0.0.0-20260210172242-74c24d432975
+	github.com/CycloneDX/cyclonedx-go v0.11.0
+	github.com/google/sbom-conformance v0.0.0-20260528190224-06e987e31d2b
 	github.com/spdx/tools-golang v0.5.7
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
-	k8s.io/klog/v2 v2.130.1
+	k8s.io/klog/v2 v2.140.0
 )
 
 require (
