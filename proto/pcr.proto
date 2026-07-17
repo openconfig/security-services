@@ -17,13 +17,14 @@ syntax = "proto3";
 package openconfig.pcrservice;
 
 import "google/protobuf/timestamp.proto";
-
 import "google/type/date.proto";
 
 option go_package = "github.com/openconfig/pcrservice";
 
-
+// ==========================================
 // Enumerations
+// ==========================================
+
 enum HashAlgo {
   // Default value. Indicates that no hash algorithm was specified or it is unknown.
   HASH_ALGO_UNSPECIFIED = 0;
@@ -98,6 +99,26 @@ enum BootStage {
   OTHER = 20;
 }
 
+enum DocumentStandard {
+  DOCUMENT_STANDARD_UNSPECIFIED = 0;
+  
+  // OWASP CycloneDX (JSON) - Supports both SBOM and VEX data profiles.
+  DOCUMENT_STANDARD_CYCLONEDX_JSON = 1;
+  
+  // SPDX (JSON) - Primary standard for Software Bill of Materials.
+  DOCUMENT_STANDARD_SPDX_JSON = 2;
+  
+  // CSAF (JSON) - Standardized framework for vulnerability advisories.
+  DOCUMENT_STANDARD_CSAF_JSON = 3;
+
+  // OpenVEX (JSON) - Optimized, lightweight format for VEX implementation.
+  DOCUMENT_STANDARD_OPENVEX_JSON = 4;
+}
+
+// ==========================================
+// PCR Messages
+// ==========================================
+
 message PcrValues { 
    // Refers to the PCR index value
    int32 pcr_index = 1; 
@@ -126,10 +147,9 @@ message MeasurementIdentifier {
     HashAlgo hash_algorithm = 4; 
 }
 
-// Get RPC Messages
 message PCRRequest { 
    MeasurementIdentifier identifier = 1;
-   }
+}
 
 message PCRResponse { 
    MeasurementIdentifier identifier = 1;
@@ -143,12 +163,8 @@ message PCRResponse {
    map<int32, PcrValues> pcr_values = 4; 
 }
 
-// Fetch RPC Messages
-
-// Request for fetching all known hardware models.
 message FetchHardwareModelsRequest {}
 
-// Response containing a list of known hardware model strings.
 message FetchHardwareModelsResponse {
     // List of valid hardware model strings.
     // Values MUST be prefixed with the manufacturer name to ensure uniqueness.
@@ -156,7 +172,6 @@ message FetchHardwareModelsResponse {
     repeated string hardware_models = 1;
 }
 
-// Request for fetching all known bootloader versions for a specific hardware model.
 message FetchBootLoaderVersionsRequest {
     // The hardware model to fetch bootloader versions
     string hardware_model = 1; 
@@ -166,13 +181,11 @@ message FetchBootLoaderVersionsRequest {
     string image_version = 2;
 }
 
-// Response containing a list of known bootloader version strings.
 message FetchBootLoaderVersionsResponse {
     // List of valid bootloader version strings for the specified hardware model
     repeated string bootloader_versions = 1; 
 }
 
-// Request for fetching all known software versions for a specific hardware model.
 message FetchSoftwareVersionsRequest {
     // The hardware model to fetch software versions.
     // Format: "[manufacturer]:[model]"
@@ -185,7 +198,7 @@ message FetchSoftwareVersionsRequest {
     // Optional: A regex pattern to filter versions (e.g., "^7.5.*").
     string version_filter_regex = 3;
 }
-// Metadata of the fetch software version response
+
 message SoftwareVersionMetadata {
     // The canonical version string (e.g., "7.5.1")
     string version = 1;
@@ -197,16 +210,98 @@ message SoftwareVersionMetadata {
     bool is_recommended = 3;
 }
 
-// Response for fetching all known software versions for a specific hardware model.
 message FetchSoftwareVersionsResponse {
     // List of software versions and their associated metadata.
     repeated SoftwareVersionMetadata software_versions = 1; 
 }
 
+// ==========================================
+// SBOM / VEX Messages
+// ==========================================
 
-// Service Definition with RPCs
+// Couples a document standard with its specific version to ensure parseability.
+message DocumentFormatSpec {
+  // The underlying specification standard.
+  DocumentStandard standard = 1;
+
+  // Version string of the schema (e.g., "1.5") to avoid ingestion failures.
+  string version = 2;
+}
+
+// Identifier for the artifact.
+message ArtifactIdentifier {
+  // Operating system family to prevent cross-platform collisions.
+  string os_family = 1;
+
+  // Vendor-specific version string, including experimental or EFT tags.
+  string os_version = 2;
+
+  // The hardware model(s) applicable to this artifact. If empty, the
+  // artifact applies to all models.
+  repeated string hardware_models = 3;
+}
+
+// An Artifact represents either an SBOM or VEX document.
+message Artifact {
+  // The image identifier associated with this SBOM/VEX payload.
+  ArtifactIdentifier identifier = 1;
+
+  // Schema standard and version used for the current delivery stream.
+  DocumentFormatSpec delivered_format = 2;
+
+  // A fully formed JWS in standard JSON Serialization format (Flattened).
+  // The raw VEX/SBOM statement is Base64url-encoded and embedded within the "payload" field of this JSON object.
+  // JWS JSON Serialization Spec: https://datatracker.ietf.org/doc/html/rfc7515#section-7.2
+  string jws_json = 3;
+}
+
+// Metadata about the artifact.
+message ArtifactInfo {
+  // Full identity specification of the software or hardware image.
+  ArtifactIdentifier identifier = 1;
+
+  // The below fields are used to determine if a new version is
+  // available for an SBOM or VEX artifact.
+
+  // The version of the latest SBOM available for this artifact.
+  string sbom_version = 2;
+
+  // The version of the latest VEX available for this artifact.
+  string vex_version = 3;
+}
+
+message ListInventoryRequest {}
+
+message ListInventoryResponse {
+  // Metadata of artifacts available for sync, allowing targeted retrieval.
+  repeated ArtifactInfo artifactInfo = 1;
+}
+
+message FetchSBOMRequest {
+  // Identifiers for which Software Bill of Materials are requested.
+  repeated ArtifactIdentifier identifiers = 1;
+}
+
+message FetchSBOMResponse {
+  repeated Artifact artifacts = 1;
+}
+
+message FetchVEXRequest {
+  // Identifiers for which VEXs are requested.
+  repeated ArtifactIdentifier identifiers = 1;
+}
+
+message FetchVEXResponse {
+  repeated Artifact artifacts = 1;
+}
+
+// ==========================================
+// Merged Service Definition
+// ==========================================
+
 service SecurityService {
-
+   // --- PCR RPCs ---
+   
    // Retrieves the PCR values for a specific software/hardware/bootloader combination.
    rpc FetchPCR(PCRRequest) returns (PCRResponse);
 
@@ -218,4 +313,15 @@ service SecurityService {
 
    // Fetches a list of known software version strings for a given hardware model.
    rpc FetchSoftwareVersions(FetchSoftwareVersionsRequest) returns (FetchSoftwareVersionsResponse);
+
+   // --- SBOM / VEX RPCs ---
+
+   // Lists all available artifacts.
+   rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
+
+   // Streams the SBOM for target artifact(s) to handle large file sizes.
+   rpc FetchSBOM(FetchSBOMRequest) returns (stream FetchSBOMResponse);
+
+   // Streams the VEX for target artifact(s) to handle large file sizes.
+   rpc FetchVEX(FetchVEXRequest) returns (stream FetchVEXResponse);
 }
