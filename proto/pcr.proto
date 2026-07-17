@@ -147,6 +147,7 @@ message MeasurementIdentifier {
     HashAlgo hash_algorithm = 4; 
 }
 
+// Get RPC Messages
 message PCRRequest { 
    MeasurementIdentifier identifier = 1;
 }
@@ -163,8 +164,12 @@ message PCRResponse {
    map<int32, PcrValues> pcr_values = 4; 
 }
 
+// Fetch RPC Messages
+
+// Request for fetching all known hardware models.
 message FetchHardwareModelsRequest {}
 
+// Response containing a list of known hardware model strings.
 message FetchHardwareModelsResponse {
     // List of valid hardware model strings.
     // Values MUST be prefixed with the manufacturer name to ensure uniqueness.
@@ -172,6 +177,7 @@ message FetchHardwareModelsResponse {
     repeated string hardware_models = 1;
 }
 
+// Request for fetching all known bootloader versions for a specific hardware model.
 message FetchBootLoaderVersionsRequest {
     // The hardware model to fetch bootloader versions
     string hardware_model = 1; 
@@ -181,11 +187,13 @@ message FetchBootLoaderVersionsRequest {
     string image_version = 2;
 }
 
+// Response containing a list of known bootloader version strings.
 message FetchBootLoaderVersionsResponse {
     // List of valid bootloader version strings for the specified hardware model
     repeated string bootloader_versions = 1; 
 }
 
+// Request for fetching all known software versions for a specific hardware model.
 message FetchSoftwareVersionsRequest {
     // The hardware model to fetch software versions.
     // Format: "[manufacturer]:[model]"
@@ -199,6 +207,7 @@ message FetchSoftwareVersionsRequest {
     string version_filter_regex = 3;
 }
 
+// Metadata of the fetch software version response
 message SoftwareVersionMetadata {
     // The canonical version string (e.g., "7.5.1")
     string version = 1;
@@ -210,6 +219,7 @@ message SoftwareVersionMetadata {
     bool is_recommended = 3;
 }
 
+// Response for fetching all known software versions for a specific hardware model.
 message FetchSoftwareVersionsResponse {
     // List of software versions and their associated metadata.
     repeated SoftwareVersionMetadata software_versions = 1; 
