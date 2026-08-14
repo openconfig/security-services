@@ -20,7 +20,7 @@ The following standard formats are supported for SBOM and VEX documents:
 
 # Document Encoding
 
-Every individual SBOM/VEX document **MUST** be uniquely encoded for each specific software or firmware release. It is mandatory that SBOM and VEX data remain separate; they **MUST NOT** be integrated into a single document.
+Every individual SBOM/VEX document **MUST** be uniquely encoded for each specific software or firmware release. If a software image does not apply universally across all hardware models, the document must be provided for each hardware group sharing the same image. It is mandatory that SBOM and VEX data remain separate; they **MUST NOT** be integrated into a single document.
 
 ## Mandatory Information for Automated Ingestion
 
