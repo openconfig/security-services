@@ -99,20 +99,27 @@ enum BootStage {
   OTHER = 20;
 }
 
-enum DocumentStandard {
-  DOCUMENT_STANDARD_UNSPECIFIED = 0;
+enum SbomDocumentStandard {
+  SBOM_DOCUMENT_STANDARD_UNSPECIFIED = 0;
   
-  // OWASP CycloneDX (JSON) - Supports both SBOM and VEX data profiles.
-  DOCUMENT_STANDARD_CYCLONEDX_JSON = 1;
+  // OWASP CycloneDX (JSON)
+  SBOM_DOCUMENT_STANDARD_CYCLONEDX_JSON = 1;
   
-  // SPDX (JSON) - Primary standard for Software Bill of Materials.
-  DOCUMENT_STANDARD_SPDX_JSON = 2;
-  
-  // CSAF (JSON) - Standardized framework for vulnerability advisories.
-  DOCUMENT_STANDARD_CSAF_JSON = 3;
+  // SPDX (JSON)
+  SBOM_DOCUMENT_STANDARD_SPDX_JSON = 2;
+}
 
-  // OpenVEX (JSON) - Optimized, lightweight format for VEX implementation.
-  DOCUMENT_STANDARD_OPENVEX_JSON = 4;
+enum VexDocumentStandard {
+  VEX_DOCUMENT_STANDARD_UNSPECIFIED = 0;
+  
+  // OWASP CycloneDX (JSON)
+  VEX_DOCUMENT_STANDARD_CYCLONEDX_JSON = 1;
+  
+  // CSAF (JSON)
+  VEX_DOCUMENT_STANDARD_CSAF_JSON = 2;
+
+  // OpenVEX (JSON)
+  VEX_DOCUMENT_STANDARD_OPENVEX_JSON = 3;
 }
 
 // ==========================================
@@ -229,47 +236,60 @@ message FetchSoftwareVersionsResponse {
 // SBOM / VEX Messages
 // ==========================================
 
-// Couples a document standard with its specific version to ensure parseability.
-message DocumentFormatSpec {
-  // The underlying specification standard.
-  DocumentStandard standard = 1;
-
-  // Version string of the schema (e.g., "1.5") to avoid ingestion failures.
-  string version = 2;
-}
-
-// Identifier for the artifact.
-message ArtifactIdentifier {
+// Identifier for the image.
+message ImageIdentifier {
   // Operating system family to prevent cross-platform collisions.
   string os_family = 1;
 
   // Vendor-specific version string, including experimental or EFT tags.
   string os_version = 2;
 
-  // The hardware model(s) applicable to this artifact. If empty, the
-  // artifact applies to all models.
-  repeated string hardware_models = 3;
+  // The hardware model(s) applicable to this artifact.
+  // If specific models are listed, this artifact only applies to those models.
+  // Set to ["*"] to indicate the artifact applies to all hardware models.
+  oneof hardware {
+    repeated string hardware_models = 3;
+    AllHardwareModels all_hardware_models = 4;
+  }
+  
+  message AllHardwareModels {}
 }
 
-// An Artifact represents either an SBOM or VEX document.
-message Artifact {
-  // The image identifier associated with this SBOM/VEX payload.
-  ArtifactIdentifier identifier = 1;
+// An SbomArtifact represents a SBOM document.
+message SbomArtifact {
+  // The image identifier associated with this SBOM payload.
+  ImageIdentifier identifier = 1;
 
-  // Schema standard and version used for the current delivery stream.
-  DocumentFormatSpec delivered_format = 2;
+
+  // The underlying SBOM specification standard.
+  SbomDocumentStandard standard = 2;
 
   // A fully formed JWS in standard JSON Serialization format (Flattened).
-  // The raw VEX/SBOM statement is Base64url-encoded and embedded within the "payload" field of this JSON object.
-  // JWS JSON Serialization Spec: https://datatracker.ietf.org/doc/html/rfc7515#section-7.2
-  string jws_json = 3;
+  // The raw SBOM statement is Base64url-encoded and embedded within the "payload" field of this JSON object.  JWS JSON Serialization Spec:
+ // https://datatracker.ietf.org/doc/html/rfc7515#section-7.2
+ string jws_json = 3;
+}
+
+// A VexArtifact represents a VEX document.
+message VexArtifact {
+  // The image identifier associated with this VEX payload.
+  ImageIdentifier identifier = 1;
+
+
+  // The underlying VEX specification standard.
+  VexDocumentStandard standard = 2;
+
+  // A fully formed JWS in standard JSON Serialization format (Flattened).
+  // The raw VEX statement is Base64url-encoded and embedded within the "payload" field of this JSON object.  JWS JSON Serialization Spec:
+ // https://datatracker.ietf.org/doc/html/rfc7515#section-7.2
+ string jws_json = 3;
 }
 
 // Metadata about the artifact.
 message ArtifactInfo {
   // Full identity specification of the software or hardware image.
-  ArtifactIdentifier identifier = 1;
-
+  ImageIdentifier identifier = 1;
+  
   // The below fields are used to determine if a new version is
   // available for an SBOM or VEX artifact.
 
@@ -278,32 +298,54 @@ message ArtifactInfo {
 
   // The version of the latest VEX available for this artifact.
   string vex_version = 3;
+
+  // The format of the latest SBOM version.
+  SbomDocumentStandard sbom_document_standard = 4;
+  
+  // The format of the latest VEX version.
+  VexDocumentStandard vex_document_standard = 5;
 }
 
-message ListInventoryRequest {}
+// --- Discovery and State Synchronization —
+
+message ListInventoryRequest {
+  // Optional filter by OS family (e.g., "JUNOS", "EOS").
+  string os_family = 1;
+
+  // Optional filter by specific software / OS version.
+  string os_version = 2;
+
+  // Optional filter by platform or hardware model if applicable.
+  string platform = 3;
+}
 
 message ListInventoryResponse {
   // Metadata of artifacts available for sync, allowing targeted retrieval.
-  repeated ArtifactInfo artifactInfo = 1;
+  repeated ArtifactInfo artifacts = 1;
 }
+
+// --- Messages for SBOM Data Retrieval ---
 
 message FetchSBOMRequest {
   // Identifiers for which Software Bill of Materials are requested.
-  repeated ArtifactIdentifier identifiers = 1;
+  repeated ImageIdentifier identifiers = 1;
 }
 
 message FetchSBOMResponse {
-  repeated Artifact artifacts = 1;
+  repeated SbomArtifact artifacts = 1;
 }
+
+// --- Messages for VEX Data Retrieval ---
 
 message FetchVEXRequest {
   // Identifiers for which VEXs are requested.
-  repeated ArtifactIdentifier identifiers = 1;
+  repeated ImageIdentifier identifiers = 1;
 }
 
 message FetchVEXResponse {
-  repeated Artifact artifacts = 1;
+  repeated VexArtifact artifacts = 1;
 }
+
 
 // ==========================================
 // Merged Service Definition
