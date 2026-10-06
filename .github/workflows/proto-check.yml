@@ -1,0 +1,39 @@
+name: Proto CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    name: Compile protos
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # securityservices.proto imports google/type/*, which is not bundled
+      # with protoc.
+      - name: Checkout googleapis
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: googleapis/googleapis
+          path: googleapis
+          sparse-checkout: google/type
+
+      # The apt package ships the google/protobuf/* well-known types in
+      # /usr/include, which protoc searches by default.
+      - name: Install protoc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
+      - name: Compile protos
+        run: protoc -I proto -I googleapis --descriptor_set_out=/dev/null proto/*.proto
