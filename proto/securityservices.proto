@@ -246,10 +246,15 @@ message ImageIdentifier {
   // The hardware model(s) applicable to this artifact.
   // If specific models are listed, this artifact only applies to those models.
   oneof hardware {
-    repeated string hardware_models = 3;
+    HardwareModelList hardware_models = 3;
     AllHardwareModels all_hardware_models = 4;
   }
-  
+
+  // Wraps the list of models because oneof fields cannot be repeated.
+  message HardwareModelList {
+    repeated string models = 1;
+  }
+
   message AllHardwareModels {}
 }
 
