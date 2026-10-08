@@ -375,7 +375,7 @@ Given that certificate-based signatures are required and CSAF VEX files use JSON
 
 # Instructions for Signing Documents
 
-## Signing CycloneDX Documents with [JSON Signature Format (JSF)](https://cyberphone.github.io/doc/security/jsf.html)
+## Signing CycloneDX Documents Using [JSON Signature Format (JSF)](https://cyberphone.github.io/doc/security/jsf.html)
 
 CycloneDX documents must be signed using JSF per the [CycloneDX specification](https://cyclonedx.org/docs/1.7/json/#signature) using the instructions in the [JSF specification](https://cyberphone.github.io/doc/security/jsf.html#Signature_Creation).
 
