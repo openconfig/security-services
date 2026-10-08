@@ -184,7 +184,7 @@ The following fields MUST be populated as specified within the chosen SBOM or VE
   - The `bom-ref` of the component with the hardware model information needs to be specified under `dependencies` as a dependency of the OS with:
     - `"ref": "<the bom_ref of the metadata.component>"`
     - `"dependsOn": [ "<the bom_ref of the component/s with the hardware model string>" ]`
-- **Signature:** The document must be signed using the options supported in the [CycloneDX specification](https://cyclonedx.org/docs/1.7/json/#signature).
+- **Signature:** The document must be signed using [JSON Signature Format](https://cyberphone.github.io/doc/security/jsf.html) as per the [CycloneDX specification](https://cyclonedx.org/docs/1.7/json/#signature).
 
 **Example:**
 
@@ -373,19 +373,27 @@ Given that certificate-based signatures are required and CSAF VEX files use JSON
 }
 ```
 
-# Sign Documents Using [JSON Web Signature (JWS)](https://datatracker.ietf.org/doc/html/rfc7515)
+# Instructions for Signing Documents
 
-## JWS Serialization Protocol
+## Signing CycloneDX Documents with [JSON Signature Format (JSF)](https://cyberphone.github.io/doc/security/jsf.html)
 
-The [JWS JSON Serialization format](https://tools.ietf.org/html/rfc7515#section-3.2) must be employed for all signed VEX/SBOM documentation. Furthermore, signed JWS files are required to use the **.json** file extension.
+CycloneDX documents must be signed using JSF per the [CycloneDX specification](https://cyclonedx.org/docs/1.7/json/#signature) using the instructions in the [JSF specification](https://cyberphone.github.io/doc/security/jsf.html#Signature_Creation).
 
-## Signing Procedures
+Document publishers must make their Root CA certificate available to consumers through a designated secure channel.
+
+## Signing SPDX and CSAF Documents Using [JSON Web Signature (JWS)](https://datatracker.ietf.org/doc/html/rfc7515)
+
+### JWS Serialization Protocol
+
+The [JWS JSON Serialization format](https://tools.ietf.org/html/rfc7515#section-3.2) must be employed for all signed SPDX and CSAF documents. Signed JWS files are required to use the **.json** file extension.
+
+### Signing Procedures
 
 - The JWS `payload` consists of the complete original JSON metadata, formatted as a UTF-8 string and Base64URL encoded (without padding).
 - All digital signatures are required to be certificate-based.
 - To facilitate trust establishment, document publishers must make their Root CA certificate available to consumers through a designated secure channel.
 
-## Cryptographic Recommendations
+### Cryptographic Recommendations
 
 - It is recommended to utilize robust algorithms such as ES256 (ECDSA P-256 with SHA-256) or RS256 (RSA with SHA-256).
 
