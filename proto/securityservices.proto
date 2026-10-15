@@ -258,32 +258,22 @@ message ImageIdentifier {
   message AllHardwareModels {}
 }
 
-// An SbomArtifact represents a SBOM document.
-message SbomArtifact {
+// Metadata describing a streamed SBOM document.
+message SbomArtifactMetadata {
   // The image identifier associated with this SBOM payload.
   ImageIdentifier identifier = 1;
 
   // The underlying SBOM specification standard.
   SbomDocumentStandard standard = 2;
-
-  // A fully formed JWS in standard JSON Serialization format (Flattened).
-  // The raw SBOM statement is Base64url-encoded and embedded within the "payload" field of this JSON object.  JWS JSON Serialization Spec:
-  // https://datatracker.ietf.org/doc/html/rfc7515#section-7.2
-  string jws_json = 3;
 }
 
-// A VexArtifact represents a VEX document.
-message VexArtifact {
+// Metadata describing a streamed VEX document.
+message VexArtifactMetadata {
   // The image identifier associated with this VEX payload.
   ImageIdentifier identifier = 1;
 
   // The underlying VEX specification standard.
   VexDocumentStandard standard = 2;
-
-  // A fully formed JWS in standard JSON Serialization format (Flattened).
-  // The raw VEX statement is Base64url-encoded and embedded within the "payload" field of this JSON object.  JWS JSON Serialization Spec:
-  // https://datatracker.ietf.org/doc/html/rfc7515#section-7.2
-  string jws_json = 3;
 }
 
 // Metadata about the artifact.
@@ -328,23 +318,35 @@ message ListInventoryResponse {
 // --- Messages for SBOM Data Retrieval ---
 
 message FetchSBOMRequest {
-  // Identifiers for which Software Bill of Materials are requested.
-  repeated ImageIdentifier identifiers = 1;
+  // Identifier of the requested SBOM document.
+  ImageIdentifier identifier = 1;
 }
 
 message FetchSBOMResponse {
-  repeated SbomArtifact artifacts = 1;
+  oneof payload {
+    // Sent in the first message of the stream to describe the artifact.
+    SbomArtifactMetadata metadata = 1;
+
+    // Sequential chunk of the signed SBOM JSON document.
+    bytes chunk = 2;
+  }
 }
 
 // --- Messages for VEX Data Retrieval ---
 
 message FetchVEXRequest {
-  // Identifiers for which VEXs are requested.
-  repeated ImageIdentifier identifiers = 1;
+  // Identifier of the requested VEX document.
+  ImageIdentifier identifier = 1;
 }
 
 message FetchVEXResponse {
-  repeated VexArtifact artifacts = 1;
+  oneof payload {
+    // Sent in the first message of the stream to describe the artifact.
+    VexArtifactMetadata metadata = 1;
+
+    // Sequential chunk of the signed VEX JSON document.
+    bytes chunk = 2;
+  }
 }
 
 
@@ -372,9 +374,9 @@ service SecurityService {
    // Lists all available artifacts.
    rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
 
-   // Streams the SBOM for target artifact(s) to handle large file sizes.
+   // Streams the SBOM for a target artifact to handle large file sizes.
    rpc FetchSBOM(FetchSBOMRequest) returns (stream FetchSBOMResponse);
 
-   // Streams the VEX for target artifact(s) to handle large file sizes.
+   // Streams the VEX for a target artifact to handle large file sizes.
    rpc FetchVEX(FetchVEXRequest) returns (stream FetchVEXResponse);
 }
