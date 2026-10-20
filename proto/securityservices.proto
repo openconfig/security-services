@@ -265,6 +265,9 @@ message SbomArtifactMetadata {
 
   // The underlying SBOM specification standard.
   SbomDocumentStandard standard = 2;
+
+  // The size of the SBOM document in bytes.
+  int64 size_bytes = 3;
 }
 
 // Metadata describing a streamed VEX document.
@@ -274,6 +277,9 @@ message VexArtifactMetadata {
 
   // The underlying VEX specification standard.
   VexDocumentStandard standard = 2;
+
+  // The size of the VEX document in bytes.
+  int64 size_bytes = 3;
 }
 
 // Metadata about the artifact.
@@ -328,6 +334,7 @@ message FetchSBOMResponse {
     SbomArtifactMetadata metadata = 1;
 
     // Sequential chunk of the signed SBOM JSON document.
+    // It's recommended to use a chunk size between 16 and 64KiB.
     bytes chunk = 2;
   }
 }
