@@ -378,12 +378,14 @@ service SecurityService {
 
    // --- SBOM / VEX RPCs ---
 
-   // Lists all available artifacts.
+   // Lists the latest available versions of all artifacts.
    rpc ListInventory(ListInventoryRequest) returns (ListInventoryResponse);
 
    // Streams the SBOM for a target artifact to handle large file sizes.
+   // The returned artifact must be the latest version the vendor has.
    rpc FetchSBOM(FetchSBOMRequest) returns (stream FetchSBOMResponse);
 
    // Streams the VEX for a target artifact to handle large file sizes.
+   // The returned artifact must be the latest version the vendor has.
    rpc FetchVEX(FetchVEXRequest) returns (stream FetchVEXResponse);
 }
