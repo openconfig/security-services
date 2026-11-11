@@ -154,7 +154,10 @@ message MeasurementIdentifier {
 }
 
 // Get RPC Messages
+// DEPRECATED: Use SignedReferenceMeasurementsRequest with FetchSignedRefValues.
 message PCRRequest { 
+   option deprecated = true;
+
    MeasurementIdentifier identifier = 1;
 }
 
@@ -164,10 +167,105 @@ message PCRResponse {
    // Refers to the TPM (Trusted Platform Module) version supported by each Control Card
    RootOfTrustVersion root_of_trust = 2; 
  
-   // Time of PCR Artifact Collection
+   // DEPRECATED: Signers SHOULD leave this unset and verifiers MUST ignore it.
+   // The time of signing is collected in TbsReferenceValues.signed_at.
    google.protobuf.Timestamp timestamp = 3;
 
    map<int32, PcrValues> pcr_values = 4; 
+}
+
+// ==========================================
+// Signed Reference Value Messages
+// ==========================================
+
+// The to-be-signed (TBS) structure for reference measurements in PcrProto
+// format. Any incompatible change to this message MUST bump the prefix version
+// in SignedReferencePcrProto (".v1" -> ".v2") so old signatures cannot verify
+// against the new type.
+message TbsReferenceValues {
+  // Binary-serialized reference measurements (a PCRResponse), exactly as the
+  // vendor wrote them. Verifiers MUST verify SignedReferencePcrProto.signature
+  // before parsing tbs_reference_values or payload, and MUST NOT re-serialize
+  // either: protobuf encoding is not deterministic (for example, map field
+  // order), so re-encoding can invalidate a valid signature.
+  // After verifying, verifiers MUST check that PCRResponse.identifier
+  // (hardware model, image and bootloader versions) matches the image or
+  // request the values are used for.
+  bytes payload = 1;
+
+  // Time at which the vendor signed this message.
+  google.protobuf.Timestamp signed_at = 2;
+}
+
+// Signing envelope for reference measurements in PcrProto format.
+// The data must be a binary-serialized proto. Text format is not accepted.
+message SignedReferencePcrProto {
+  // Binary-serialized TbsReferenceValues.
+  bytes tbs_reference_values = 1;
+
+  // The signing prefix, currently
+  // "openconfig.pcrservice.TbsReferenceValues.v1.".
+  // kPrefix is the UTF-8 encoding of this string followed by one 0x00 byte.
+  // Verifiers MUST reject the envelope unless this value exactly matches an
+  // allowlisted prefix, and MUST do so before verifying the signature or
+  // parsing tbs_reference_values. It is recorded so verifiers never have to
+  // guess the version.
+  string prefix = 2;
+
+  // DER encoding of:
+  //   Signature ::= SEQUENCE {
+  //     algorithm  AlgorithmIdentifier,
+  //     signature  BIT STRING
+  //   }
+  // the same pair X.509 uses to sign certificates (RFC 5280 4.1.1.2-4.1.1.3).
+  // The BIT STRING holds the signature over kPrefix || tbs_reference_values.
+  // AlgorithmIdentifier.parameters MUST be absent.
+  //   - ECDSA: the BIT STRING holds the DER Ecdsa-Sig-Value (RFC 3279 2.2.3).
+  //     A raw r||s signature MUST be converted to DER.
+  //   - ML-DSA-87: pure ML-DSA (not HashML-DSA) with an empty context string,
+  //     signing kPrefix || tbs_reference_values directly with no pre-hash
+  //     (RFC 9881).
+  //
+  // `algorithm` is not covered by the signature, so verifiers MUST accept
+  // only these (algorithm, leaf key) pairs and reject all others:
+  //   - ecdsa-with-SHA256 (1.2.840.10045.4.3.2) with a P-256 key
+  //   - ecdsa-with-SHA384 (1.2.840.10045.4.3.3) with a P-384 key
+  //   - id-ml-dsa-87 (2.16.840.1.101.3.4.3.19) with an ML-DSA-87 key
+  // Rejected pairs include RSA PKCS#1 v1.5 and a hash that doesn't match the
+  // curve, such as ecdsa-with-SHA256 with a P-384 key.
+  bytes signature = 3;
+
+  // X.509 certificates, exactly one PEM CERTIFICATE block per entry.
+  //   - Entry 0 is the leaf signing certificate holding the key that produced
+  //     `signature`. It MUST NOT be self-signed.
+  //   - All intermediate CA certificates MUST follow the leaf, each one
+  //     issuing the certificate before it.
+  //   - The vendor root CA is communicated out of band and pinned per vendor.
+  //     It SHOULD NOT be included.
+  // Verifiers MUST reject the envelope if entry 0 is self-signed, MUST ignore
+  // self-signed certificates in later entries, and MUST validate the chain
+  // only against the root pinned for that vendor.
+  repeated string cert_chain_pems = 4;
+}
+
+// Signed reference measurements, in either the protobuf envelope or CoRIM.
+message SignedReferenceMeasurements {
+  oneof measurement_envelope {
+    // Protobuf-based signed reference values.
+    SignedReferencePcrProto signed_pcr_proto = 1;
+
+    // A signed CoRIM (IETF RATS): the raw COSE_Sign1 or COSE_Sign CBOR blob.
+    // It carries its own signature, so SignedReferencePcrProto does not
+    // wrap it.
+    bytes signed_corim_cbor = 2;
+  }
+}
+
+// Request for FetchSignedRefValues. The response carries the reference values
+// manifest in either PCRResponse (protobuf envelope) or CoRIM format.
+message SignedReferenceMeasurementsRequest {
+  // The image and hardware to return reference values for.
+  MeasurementIdentifier identifier = 1;
 }
 
 // Fetch RPC Messages
@@ -364,8 +462,18 @@ message FetchVEXResponse {
 service SecurityService {
    // --- PCR RPCs ---
    
+   // DEPRECATED: Returns unsigned values. Use FetchSignedRefValues instead.
    // Retrieves the PCR values for a specific software/hardware/bootloader combination.
-   rpc FetchPCR(PCRRequest) returns (PCRResponse);
+   rpc FetchPCR(PCRRequest) returns (PCRResponse) {
+      option deprecated = true;
+   }
+
+   // Returns the signed reference measurements for the image and hardware in
+   // `identifier`, as one of the measurement_envelope options.
+   // This is the same `SignedReferenceMeasurements` data that the vendor drops
+   // next to the image. Returns NOT_FOUND if none exist.
+   rpc FetchSignedRefValues(SignedReferenceMeasurementsRequest)
+       returns (SignedReferenceMeasurements);
 
    // Fetches a list of all known hardware model strings supported by the vendor service.
    rpc FetchHardwareModels(FetchHardwareModelsRequest) returns (FetchHardwareModelsResponse);

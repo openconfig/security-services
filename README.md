@@ -38,9 +38,9 @@ SBOM are used to convey the software manifest of a package including a dependenc
 ### PCRService
 
 ### Overview
-The GetPCR RPC provides a standardized gRPC interface for retrieving Platform Configuration Register (PCR) values from vendors. This service is essential for establishing a "Golden" reference of measurements used in remote attestation and verified boot processes.
+The FetchSignedRefValues RPC provides a standardized gRPC interface for retrieving reference values, such as reference Platform Configuration Register (PCR) values, from vendors.
 
-PCR values represent the state of a device's boot chain, from the initial Root of Trust through the kernel and container layers. By providing a common proto definition, this service allows network operators to query expected PCR measurements across different hardware models and software versions, ensuring that the device's integrity can be validated against a known-good baseline.
+Reference values represent the expected state of each software and firmware component on a device. Specifically, reference PCR values reflect the expected state of a device's boot chain—from the initial Root of Trust through the kernel and container layers—extended into TPM PCRs during boot. By providing a common proto definition, this service allows network operators to query expected reference values across different hardware models and software versions, ensuring that the device's integrity can be validated against a known-good baseline.
 
 ### Key Components
 
@@ -53,6 +53,17 @@ Users can retrieve specific PCR sets based on a combination of hardware models, 
 ### Discovery RPCs: 
 Includes helper methods to fetch lists of supported hardware models, bootloader versions, and software versions available in the vendor's database.
 
+### Signed Reference Values:
+PCRResponse has no integrity protection on its own. To make it verifiable, vendors sign the binary-serialized PCRResponse and wrap it in a `SignedReferencePcrProto` envelope (see `TbsReferenceValues` and `SignedReferencePcrProto` in `proto/securityservices.proto`).
+
+Signed reference values can be provided as a binary-serialized `SignedReferenceMeasurements` in two ways.  NOTE: Text format is not accepted.
+
+* Binary-serialized `SignedReferenceMeasurements` dropped next to the image as a file, e.g. `signed.ref.measurements.binpb`. 
+* Returned by the `FetchSignedRefValues` RPC.
+
+Protobuf messages can have multiple serialized formats, and two different protobuf messages can have the same exact serialized format on the wire. Consequently, to avoid type manipulation attacks, the signature for the signed protobuf format includes a fixed prefix plus an exact binary-serialized message. Therefore, verifiers must never re-encode the payload.
+
+Only ECDSA P-256/SHA-256, ECDSA P-384/SHA-384 and ML-DSA-87 are accepted. The certificate chain must validate against the vendor's root CA, which is shared out of band.
 
 
 
